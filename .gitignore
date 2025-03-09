@@ -1,0 +1,12 @@
+client.exe
+server.exe
+
+libraylib.a
+libraylibdll.a
+raylib.dll
+
+raylib.h
+raymath.h
+rlgl.h
+
+.vscode/*
