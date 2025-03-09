@@ -8,10 +8,6 @@ namespace rl
 
 int main(void)
 {
-    // networking information
-    char* serverIP = "127.0.0.1";
-    int serverPort = 100;
-
     // Init Winsock
     ClientNetworking networking = ClientNetworking();
     networking.InitializeNetworking();
