@@ -40,6 +40,8 @@ bool ClientNetworking::Impl::InitializeNetworking()
 
 bool ClientNetworking::Impl::SetupServerSocket(const std::string &ip, int port)
 {
+    serverIP = ip;
+    serverPort = port;
     clientSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (clientSocket == INVALID_SOCKET) {
         std::cerr << "Failed to create socket." << std::endl;
@@ -61,8 +63,9 @@ bool ClientNetworking::Impl::SetupServerSocket(const std::string &ip, int port)
 
 void ClientNetworking::Impl::SendToServer(const std::string &message)
 {
-    std::cout << "Sending " << message << " to server" << std::endl;
-    sendto(clientSocket, message.c_str(), message.length(), 0, (sockaddr*)&serverAddr, sizeof(serverAddr));
+    // std::cout << "Sending " << message << " to server" << std::endl;
+    int bytes_send = sendto(clientSocket, message.c_str(), message.length(), 0, (sockaddr*)&serverAddr, sizeof(serverAddr));
+    std::cout << "send: " << bytes_send << std::endl;
 }
 
 void ClientNetworking::Impl::ReceiveFromServer()
@@ -73,7 +76,8 @@ void ClientNetworking::Impl::ReceiveFromServer()
     int fromAddrLen = sizeof(fromAddr);
     int bytesReceived = recvfrom(clientSocket, buffer, sizeof(buffer), 0, (sockaddr*)&fromAddr, &fromAddrLen);
 
-    if (bytesReceived > 0) {
+    if (bytesReceived > 0)
+    {
         buffer[bytesReceived] = '\0'; // Null-terminate the received message
         std::cout << "Received from server: " << buffer << std::endl;
     }
