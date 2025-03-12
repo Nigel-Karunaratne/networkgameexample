@@ -1,4 +1,4 @@
-server.exe: server.cpp
+server.exe: server.cpp networking.h
 	g++ server.cpp -o server -lws2_32
 # g++ server.cpp -o server -lraylib -lgdi32 -lwinmm -lws2_32
 
