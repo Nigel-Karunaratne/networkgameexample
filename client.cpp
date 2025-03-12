@@ -11,22 +11,22 @@ int main(void)
     // Init Winsock
     ClientNetworking networking = ClientNetworking();
     networking.InitializeNetworking();
-
     networking.SetupServerSocket("127.0.0.1",100);
-
-    const char* message = "Hello from Client!";
 
     rl::InitWindow(800,450, "udp client window");
     rl::SetTargetFPS(60);
+
+    networking.SendToServer("A new client wants to connect!");
 
     // Main game loop
     while (!rl::WindowShouldClose())
     {
         // std::cout << "start of while loop" << std::endl;
         // sendto(clientSocket, message, strlen(message), 0, (sockaddr*)&serverAddr, sizeof(serverAddr));
-        networking.SendToServer(message);
 
         networking.ReceiveFromServer();
+
+        // TODO - update local simulation
 
         // std::cout << "drawing..." << std::endl;
         rl::BeginDrawing();
