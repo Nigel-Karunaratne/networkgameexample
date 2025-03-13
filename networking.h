@@ -26,7 +26,8 @@ private:
     std::mutex mtx;
 
     void CreateNewPlayer(std::string key, Client newClient);
-    void HandleClient(SOCKET serverSocket, Client client);
+    void HandleClient_Thread(SOCKET serverSocket, Client client);
+    void ListenForClients_Thread();
 public:
     Networking() {};
     ~Networking() { closesocket(serverSocket); WSACleanup(); };
@@ -35,7 +36,6 @@ public:
     bool CreateServerSocket(int port);
 
     void SetUpClientListening();
-    void ListenForClients();
 
     void SendGameStateToAllPlayers();
 
@@ -79,33 +79,36 @@ inline bool Networking::CreateServerSocket(int port)
 
 inline void Networking::SetUpClientListening()
 {
-    allThreads.push_back(std::thread(&ListenForClients, this));
+    allThreads.push_back(std::thread(&ListenForClients_Thread, this));
 }
 
-inline void Networking::ListenForClients()
+inline void Networking::ListenForClients_Thread()
 {
     char buffer[512];
     sockaddr_in clientAddr;
     int clientAddrLen = sizeof(clientAddr);
 
-    int bytesReceived = recvfrom(serverSocket, buffer, sizeof(buffer), 0, (sockaddr*)&clientAddr, &clientAddrLen);
-    if(bytesReceived > 0)
+    while (true)
     {
-        std::string key = inet_ntoa(clientAddr.sin_addr) + std::to_string(ntohs(clientAddr.sin_port));
-        if (clientMap.find(key) == clientMap.end())
+        int bytesReceived = recvfrom(serverSocket, buffer, sizeof(buffer), 0, (sockaddr*)&clientAddr, &clientAddrLen);
+        if(bytesReceived > 0)
         {
-            CreateNewPlayer(key, (Client){clientAddr});
-        }
-        else
-        {
-            // Existing client -- update information
-        }
-        
-        buffer[bytesReceived] = '\0';
-        // std::cout << "Received message: " << buffer << std::endl;
+            std::string key = inet_ntoa(clientAddr.sin_addr) + std::to_string(ntohs(clientAddr.sin_port));
+            if (clientMap.find(key) == clientMap.end())
+            {
+                CreateNewPlayer(key, (Client){clientAddr});
+            }
+            else
+            {
+                // Existing client -- update information
+            }
+            
+            buffer[bytesReceived] = '\0';
+            // std::cout << "Received message: " << buffer << std::endl;
 
-        const char* response = "ACK";
-        sendto(serverSocket, response, strlen(response), 0, (sockaddr*)&clientAddr, clientAddrLen);
+            // const char* response = "ACK";
+            // sendto(serverSocket, response, strlen(response), 0, (sockaddr*)&clientAddr, clientAddrLen);
+        }
     }
 }
 
@@ -116,7 +119,7 @@ inline void Networking::SendGameStateToAllPlayers()
         Client& c = clientPair.second;
 
         // TODO - serialize game data
-        char buffer[10];
+        const char *buffer = "this is the game state"; // char buffer[10];
 
         // TODO - send to client
         sendto(serverSocket, buffer, strlen(buffer), 0, (sockaddr*)&c.address, sizeof(c.address));
@@ -127,10 +130,10 @@ inline void Networking::CreateNewPlayer(std::string key, Client newClient)
 {
     std::cout << "NEW CLIENT: " << key << std::endl;
     clientMap[key] = newClient;
-    allThreads.push_back(std::thread(&HandleClient, this, serverSocket, newClient));
+    allThreads.push_back(std::thread(&HandleClient_Thread, this, serverSocket, newClient));
 }
 
-inline void Networking::HandleClient(SOCKET serverSocket, Client client)
+inline void Networking::HandleClient_Thread(SOCKET serverSocket, Client client)
 {
     char buffer[512];
     int addrSize = sizeof(client.address);
