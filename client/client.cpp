@@ -1,48 +1,75 @@
 #include "clientnetworking.h"
+#include "clientstate.h"
 #include <iostream>
 
 #include <thread>
 
-namespace rl
-{
 #include <raylib.h>
-}
+// #define RAYGUI_IMPLEMENTATION
+// #include "include/raygui.h"
+
+#define SCREEN_WIDTH 800
+#define SCREEN_HEIGHT 400
+
+#define MIN(a, b) ((a)<(b) ? (a) : (b))
+#define MAX(a, b) ((a)>(b) ? (a) : (b))
 
 int main(void)
 {
+    ClientState state = ClientState::STATE_TITLE;
     // Init Winsock
     ClientNetworking networking = ClientNetworking();
     networking.InitializeNetworking();
     networking.SetupServerSocket("127.0.0.1",100);
 
-    rl::InitWindow(800,450, "udp client window");
-    rl::SetTargetFPS(60);
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "udp client window");
+    SetTargetFPS(60);
 
     std::thread networkingThread(&ClientNetworking::ReceiveFromServer, networking);
 
     networking.SendToServer("A new client wants to connect!");
 
+    RenderTexture2D renderTexture = LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT);
+    SetTextureFilter(renderTexture.texture, TEXTURE_FILTER_BILINEAR);  // Texture scale filter to use
+
     // Main game loop
-    while (!rl::WindowShouldClose())
+    while (!WindowShouldClose())
     {
-        // std::cout << "start of while loop" << std::endl;
-        // sendto(clientSocket, message, strlen(message), 0, (sockaddr*)&serverAddr, sizeof(serverAddr));
+        switch(state)
+        {
+            case ClientState::STATE_TITLE:
+                break;
+            case ClientState::STATE_NETWORKGAME:
+                break;
+            case ClientState::STATE_DISCONNECT:
+                break;
+            default:
+                break;
+        }
 
-        // TODO - update local simulation
 
-        // std::cout << "drawing..." << std::endl;
-        rl::BeginDrawing();
-                // std::cout << "A" << std::endl;
-            rl::ClearBackground(rl::RAYWHITE);
-                // std::cout << "B" << std::endl;
-            rl::DrawText("Congrats! You created your first window!", 190, 200, 20, rl::LIGHTGRAY);
-                // std::cout << "C" << std::endl;
-        rl::EndDrawing();
-        // std::cout << "end drawing..." << std::endl;
+        BeginTextureMode(renderTexture);
+
+            ClearBackground(RAYWHITE);
+            DrawText("Congrats! You created your first window!", 190, 200, 20, LIGHTGRAY);
+        
+        EndTextureMode();
+
+        // Framebuffer Scaling
+        float scale = MIN((float)GetScreenWidth()/SCREEN_WIDTH, (float)GetScreenHeight()/SCREEN_HEIGHT);
+
+        //Draw framebuffer texture to Window (see raylib example core_window_letterbox.c)
+        BeginDrawing();
+            ClearBackground(BLACK);
+            DrawTexturePro(renderTexture.texture, (Rectangle){ 0.0f, 0.0f, (float)renderTexture.texture.width, (float)-renderTexture.texture.height },
+            (Rectangle){ (GetScreenWidth() - ((float)SCREEN_WIDTH*scale))*0.5f, (GetScreenHeight() - ((float)SCREEN_HEIGHT*scale))*0.5f,
+            (float)SCREEN_WIDTH*scale, (float)SCREEN_HEIGHT*scale }, (Vector2){ 0, 0 }, 0.0f, WHITE);
+        EndDrawing();
     }
 
     std::cout << "out of while loop" << std::endl;
-    rl::CloseWindow();
+    CloseWindow();
 
     return 0;
 }
