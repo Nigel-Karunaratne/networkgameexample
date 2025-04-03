@@ -1,6 +1,8 @@
 #include "clientnetworking.h"
 #include <iostream>
 
+#include <thread>
+
 namespace rl
 {
 #include <raylib.h>
@@ -15,6 +17,8 @@ int main(void)
 
     rl::InitWindow(800,450, "udp client window");
     rl::SetTargetFPS(60);
+
+    std::thread networkingThread(&ClientNetworking::ReceiveFromServer, networking);
 
     networking.SendToServer("A new client wants to connect!");
 

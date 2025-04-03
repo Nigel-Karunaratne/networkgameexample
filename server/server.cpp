@@ -40,14 +40,21 @@ int main(int argc, char const *argv[])
 
     networking.SetUpClientListening();
 
+    std::cout << "[SERVER] Started." << std::endl;
+
     bool isRunning = true;
     while (isRunning && interrupt)
     {
         // networking.ListenForClients();
         // TODO - delay for simulation rate?
+        networking.SendGameStateToAllPlayers();
     }
 
     networking.JoinAllThreads();
 
     return EXIT_SUCCESS;
 }
+
+// I have a cpp program that uses winsock to act like a game server. The server uses UDP. How can I handle multiple clients?
+
+// in cpp, how would i set up a raylib game that uses client-server for networking? using udp sockets

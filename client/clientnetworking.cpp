@@ -74,16 +74,19 @@ void ClientNetworking::Impl::ReceiveFromServer()
 
     sockaddr_in fromAddr;
     int fromAddrLen = sizeof(fromAddr);
-    int bytesReceived = recvfrom(clientSocket, buffer, sizeof(buffer), 0, (sockaddr*)&fromAddr, &fromAddrLen);
-
-    if (bytesReceived > 0)
+    
+    while(true)
     {
-        buffer[bytesReceived] = '\0'; // Null-terminate the received message
-        std::cout << "Received from server: " << buffer << std::endl;
-    }
-    else
-    {
-        // std::cout << "GOT NOTHING?" << std::endl;
+        int bytesReceived = recvfrom(clientSocket, buffer, sizeof(buffer), 0, (sockaddr*)&fromAddr, &fromAddrLen);
+        if (bytesReceived > 0)
+        {
+            buffer[bytesReceived] = '\0'; // Null-terminate the received message
+            std::cout << "Received from server: " << buffer << std::endl;
+        }
+        else
+        {
+            // std::cout << "GOT NOTHING?" << std::endl;
+        }
     }
 }
 

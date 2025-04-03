@@ -1,0 +1,16 @@
+# Custom Application-Layer protocol for Game
+
+Data:
+    XX 2 bytes that specify what command this is:
+        22 = Client Requests Connection
+        33 = Client Sends Inputs
+    YYYYY : Actual information being sent
+    
+
+Clients send their Input to the server
+Server sends current state of the game back to player.
+    Needs to send ALL player information back to client
+
+If a player joins, server sends a new packet containing player info back to ALL clients (broadcast all);
+
+Start w/ sending number of players -- can calculate length of data this way
