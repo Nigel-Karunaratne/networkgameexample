@@ -1,12 +1,16 @@
+// USES RAYLIB 5.5, RAYGUI 4.0
+
 #include "clientnetworking.h"
 #include "clientstate.h"
+#include "screen_title.h"
+
+
 #include <iostream>
-
 #include <thread>
+#include "raylib.h"
 
-#include <raylib.h>
-// #define RAYGUI_IMPLEMENTATION
-// #include "include/raygui.h"
+#define RAYGUI_IMPLEMENTATION
+#include "raygui.h"
 
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 400
@@ -17,7 +21,9 @@
 int main(void)
 {
     ClientState state = ClientState::STATE_TITLE;
-    // Init Winsock
+    TitleScreen titleScreen = TitleScreen(); 
+
+    // Init Networking
     ClientNetworking networking = ClientNetworking();
     networking.InitializeNetworking();
     networking.SetupServerSocket("127.0.0.1",100);
@@ -39,6 +45,8 @@ int main(void)
         switch(state)
         {
             case ClientState::STATE_TITLE:
+                titleScreen.Update(state);
+                titleScreen.Draw(renderTexture);
                 break;
             case ClientState::STATE_NETWORKGAME:
                 break;
@@ -48,13 +56,6 @@ int main(void)
                 break;
         }
 
-
-        BeginTextureMode(renderTexture);
-
-            ClearBackground(RAYWHITE);
-            DrawText("Congrats! You created your first window!", 190, 200, 20, LIGHTGRAY);
-        
-        EndTextureMode();
 
         // Framebuffer Scaling
         float scale = MIN((float)GetScreenWidth()/SCREEN_WIDTH, (float)GetScreenHeight()/SCREEN_HEIGHT);
