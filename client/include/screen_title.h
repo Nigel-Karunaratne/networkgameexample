@@ -12,6 +12,6 @@ public:
     ~TitleScreen();
 
     void Update(ClientState& stateRef);
-    void Draw(RenderTexture2D& renderTexture);
+    void Draw(RenderTexture2D& renderTexture, Vector2& mousePos);
 };
 

@@ -4,6 +4,8 @@
 #include <string>
 #include <iostream>
 
+#include "gui.h"
+
 TitleScreen::TitleScreen()
 {
 }
@@ -16,11 +18,16 @@ void TitleScreen::Update(ClientState &stateRef)
 {
 }
 
-void TitleScreen::Draw(RenderTexture2D& renderTexture)
+void TitleScreen::Draw(RenderTexture2D& renderTexture, Vector2& mousePos)
 {
     BeginTextureMode(renderTexture);
 
-        if (GuiTextBox((Rectangle){10, 10, 200, 50}, ipTextBox, sizeof(ipTextBox), true))
+        if (GUI::TextBox((Rectangle){10, 10, 200, 50}, ipTextBox, mousePos))
+        {
+            std::cout << ipTextBox << std::endl;
+        }
+
+        if (GUI::TextBox((Rectangle){10, 80, 200, 100}, ipTextBox, mousePos))
         {
             std::cout << ipTextBox << std::endl;
         }

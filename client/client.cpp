@@ -8,6 +8,7 @@
 #include <iostream>
 #include <thread>
 #include "raylib.h"
+#include "raymath.h"
 
 #define RAYGUI_IMPLEMENTATION
 #include "raygui.h"
@@ -39,14 +40,23 @@ int main(void)
     RenderTexture2D renderTexture = LoadRenderTexture(SCREEN_WIDTH, SCREEN_HEIGHT);
     SetTextureFilter(renderTexture.texture, TEXTURE_FILTER_BILINEAR);  // Texture scale filter to use
 
+    Vector2 virtualMousePos = (Vector2){0,0};
+
     // Main game loop
     while (!WindowShouldClose())
     {
+        // Framebuffer Scaling and "Virtual Mouse Pos"
+        float scale = MIN((float)GetScreenWidth()/SCREEN_WIDTH, (float)GetScreenHeight()/SCREEN_HEIGHT);
+        Vector2 realMousePos = GetMousePosition();
+        virtualMousePos.x = (realMousePos.x - (GetScreenWidth() - (SCREEN_WIDTH*scale))*0.5f)/scale;
+        virtualMousePos.y = (realMousePos.y - (GetScreenHeight() - (SCREEN_HEIGHT*scale))*0.5f)/scale;
+        virtualMousePos = Vector2Clamp(virtualMousePos, (Vector2){ 0, 0 }, (Vector2){ (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT });
+        
         switch(state)
         {
             case ClientState::STATE_TITLE:
                 titleScreen.Update(state);
-                titleScreen.Draw(renderTexture);
+                titleScreen.Draw(renderTexture, virtualMousePos);
                 break;
             case ClientState::STATE_NETWORKGAME:
                 break;
@@ -56,9 +66,6 @@ int main(void)
                 break;
         }
 
-
-        // Framebuffer Scaling
-        float scale = MIN((float)GetScreenWidth()/SCREEN_WIDTH, (float)GetScreenHeight()/SCREEN_HEIGHT);
 
         //Draw framebuffer texture to Window (see raylib example core_window_letterbox.c)
         BeginDrawing();
