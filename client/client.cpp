@@ -28,8 +28,6 @@ int main(void)
         // std::cout << "start of while loop" << std::endl;
         // sendto(clientSocket, message, strlen(message), 0, (sockaddr*)&serverAddr, sizeof(serverAddr));
 
-        networking.ReceiveFromServer();
-
         // TODO - update local simulation
 
         // std::cout << "drawing..." << std::endl;
