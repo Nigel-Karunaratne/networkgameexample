@@ -16,10 +16,13 @@ public:
 
     ~Impl();
     bool InitializeNetworking();
-    bool SetupServerSocket(const std::string& ip, int port);
+    bool SetupServerSocket();
+    bool SetIPAndPort(const std::string& ip, int port);
 
     void SendToServer(const std::string& message);
     void ReceiveFromServer();
+
+    std::string GetAddressRepresentation();
 };
 
 ClientNetworking::Impl::~Impl()
@@ -38,10 +41,16 @@ bool ClientNetworking::Impl::InitializeNetworking()
     return true;
 }
 
-bool ClientNetworking::Impl::SetupServerSocket(const std::string &ip, int port)
+bool ClientNetworking::Impl::SetIPAndPort(const std::string& ip, int port)
 {
+    // TODO - validate INPUT!
     serverIP = ip;
     serverPort = port;
+    return true;
+}
+
+bool ClientNetworking::Impl::SetupServerSocket()
+{
     clientSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (clientSocket == INVALID_SOCKET) {
         std::cerr << "Failed to create socket." << std::endl;
@@ -90,6 +99,11 @@ void ClientNetworking::Impl::ReceiveFromServer()
     }
 }
 
+std::string ClientNetworking::Impl::GetAddressRepresentation()
+{
+    return serverIP + ":" + std::to_string(serverPort);
+}
+
 ClientNetworking::ClientNetworking() : pimpl(new Impl())
 {
 }
@@ -104,9 +118,14 @@ bool ClientNetworking::InitializeNetworking()
     return pimpl->InitializeNetworking();
 }
 
-bool ClientNetworking::SetupServerSocket(const std::string &ip, int port)
+bool ClientNetworking::SetIPAndPort(const std::string &ip, int port)
 {
-    return pimpl->SetupServerSocket(ip, port);
+    return pimpl->SetIPAndPort(ip, port);
+}
+
+bool ClientNetworking::SetupServerSocket()
+{
+    return pimpl->SetupServerSocket();
 }
 
 void ClientNetworking::SendToServer(const std::string& message)
@@ -117,4 +136,9 @@ void ClientNetworking::SendToServer(const std::string& message)
 void ClientNetworking::ReceiveFromServer()
 {
     pimpl->ReceiveFromServer();
+}
+
+std::string ClientNetworking::GetAddressRepresentation()
+{
+    return pimpl->GetAddressRepresentation();
 }

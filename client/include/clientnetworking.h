@@ -12,9 +12,12 @@ public:
     ~ClientNetworking();
 
     bool InitializeNetworking();
-    bool SetupServerSocket(const std::string& ip, int port);
+    bool SetIPAndPort(const std::string& ip, int port);
+    bool SetupServerSocket();
 
     void SendToServer(const std::string& message);
     void ReceiveFromServer();
+
+    std::string GetAddressRepresentation();
 };
 
