@@ -100,7 +100,7 @@ inline void Networking::ListenForClients_Thread()
             }
             else
             {
-                // Existing client -- update information
+                // Existing client -- do nothing, right?
             }
             
             buffer[bytesReceived] = '\0';
@@ -137,14 +137,58 @@ inline void Networking::HandleClient_Thread(SOCKET serverSocket, Client client)
 {
     char buffer[512];
     int addrSize = sizeof(client.address);
+
+    
     while(true)
     {
-        int bytesReceived = recvfrom(serverSocket, buffer, sizeof(buffer), 0, (sockaddr*)&client.address, &addrSize);
-        if(bytesReceived > 0)
+        // WINDOWS SPECIFIC!!
+        // Set up the fd_set for select()
+        fd_set readfds;
+        FD_ZERO(&readfds);  // Clear the fd_set
+        FD_SET(serverSocket, &readfds);  // Add the UDP socket to the fd_set
+    
+        // Set the timeout (in seconds)
+        struct timeval timeout;
+        timeout.tv_sec = 5;
+        timeout.tv_usec = 0;
+        
+        int result = select(serverSocket + 1, &readfds, NULL, NULL, &timeout);
+        if (result == -1)
         {
-            std::lock_guard<std::mutex> lock(mtx);
-            // TODO -- update a game state here?
-            std::cout << "game state updated..." << std::endl;
+            perror("select() failed");
+            break;
         }
+        else if (result == 0)
+        {
+            // Timeout occurred
+            std::cout << "Timeout occurred, no data received within " << 5 << " seconds from " << inet_ntoa(client.address.sin_addr) << ":" << ntohs(client.address.sin_port) << std::endl;
+            break; // TODO - instead of just exiting loop, remove client and kill this thread! REMOVE FROM GAME STATE!
+        }
+        else
+        {
+            // Data available, read it
+            if (FD_ISSET(serverSocket, &readfds))
+            {
+                int len = recvfrom(serverSocket, buffer, sizeof(buffer), 0, (struct sockaddr*)&client.address, &addrSize);
+                if (len == -1)
+                {
+                    perror("recvfrom failed");
+                    break;
+                }
+                else
+                {
+                    std::cout << "Received " << len << " bytes from client: " << inet_ntoa(client.address.sin_addr) << ":" << ntohs(client.address.sin_port) << std::endl;
+                    // Process received data here...
+                }
+            }
+        }
+
+        // int bytesReceived = recvfrom(serverSocket, buffer, sizeof(buffer), 0, (sockaddr*)&client.address, &addrSize);
+        // if(bytesReceived > 0)
+        // {
+        //     std::lock_guard<std::mutex> lock(mtx);
+        //     // TODO -- update a game state here?
+        //     std::cout << "game state updated..." << std::endl;
+        // }
     }
 }
