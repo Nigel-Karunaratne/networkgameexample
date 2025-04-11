@@ -29,8 +29,8 @@ public:
     bool SetupServerSocket();
     bool SetIPAndPort(const std::string& ip, int port);
 
-    void SendToServer(const std::string& message);
-    void ReceiveFromServer();
+    void sendToServer(const std::string& message);
+    void receiveFromServer_Thread();
 
     bool SetupNetworkingThread();
     void ShutdownNetworkngThread();
@@ -99,10 +99,10 @@ bool ClientNetworking::Impl::SetupNetworkingThread()
     std::cout << "SOCKET SET UP" << std::endl;
     
     threadRunning = true;
-    this->networkingThread = std::thread(&ClientNetworking::Impl::ReceiveFromServer, this);
+    this->networkingThread = std::thread(&ClientNetworking::Impl::receiveFromServer_Thread, this);
     std::cout << "THREAD SET UP" << std::endl;
     
-    SendToServer(protocol::CLIENT_CONNECT_REQUEST);
+    sendToServer(protocol::CLIENT_CONNECT_REQUEST);
 
     return true;
 }
@@ -114,14 +114,14 @@ void ClientNetworking::Impl::ShutdownNetworkngThread()
         this->networkingThread.detach();
 }
 
-void ClientNetworking::Impl::SendToServer(const std::string &message)
+void ClientNetworking::Impl::sendToServer(const std::string &message)
 {
     // std::cout << "Sending " << message << " to server" << std::endl;
     int bytes_send = sendto(clientSocket, message.c_str(), message.length(), 0, (sockaddr*)&serverAddr, sizeof(serverAddr));
     std::cout << "send: " << bytes_send << std::endl;
 }
 
-void ClientNetworking::Impl::ReceiveFromServer()
+void ClientNetworking::Impl::receiveFromServer_Thread()
 {
     char buffer[1024];
 
@@ -191,16 +191,6 @@ bool ClientNetworking::SetIPAndPort(const std::string &ip, int port)
 bool ClientNetworking::SetupServerSocket()
 {
     return pimpl->SetupServerSocket();
-}
-
-void ClientNetworking::SendToServer(const std::string& message)
-{
-    return pimpl->SendToServer(message);
-}
-
-void ClientNetworking::ReceiveFromServer()
-{
-    pimpl->ReceiveFromServer();
 }
 
 std::string ClientNetworking::GetAddressRepresentation()

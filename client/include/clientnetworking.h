@@ -18,11 +18,7 @@ public:
     bool SetupNetworkingThread();
     void ShutdownNetworkngThread();
 
-    void SendToServer(const std::string& message);
-    void ReceiveFromServer();
-
     std::string GetAddressRepresentation();
-
 
     int GetConnectionRequestStatus(); //-1 for reject, 1 for accept, 0 for nothing;
 };
