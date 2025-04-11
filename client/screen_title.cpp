@@ -1,4 +1,5 @@
 #include "screen_title.h"
+#include "screen_connecting.h"
 
 #include <string>
 #include <iostream>
@@ -13,15 +14,17 @@ TitleScreen::~TitleScreen()
 {
 }
 
-void TitleScreen::Update(ClientState &stateRef)
+Screen* TitleScreen::Update(ClientState &stateRef)
 {
     if(startNetworking) //Button clicked --> set state
     {
         stateRef = ClientState::STATE_CONNECTING;
+        return new ConnectingScreen(this->networkingRef);
     }
+    return nullptr;
 }
 
-void TitleScreen::Draw(RenderTexture2D& renderTexture, Vector2& mousePos)
+void TitleScreen::Draw(RenderTexture2D& renderTexture, const Vector2& mousePos)
 {
     BeginTextureMode(renderTexture);
         ClearBackground(RAYWHITE);

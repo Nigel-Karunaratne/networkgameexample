@@ -15,9 +15,13 @@ public:
     bool SetIPAndPort(const std::string& ip, int port);
     bool SetupServerSocket();
 
+    void SetupNetworkingThread();
+
     void SendToServer(const std::string& message);
     void ReceiveFromServer();
 
     std::string GetAddressRepresentation();
+
+    bool HasBeenAcceptedByServer();
 };
 

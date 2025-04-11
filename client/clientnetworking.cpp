@@ -2,6 +2,7 @@
 #include "clientnetworking.h"
 
 #include <iostream>
+#include <thread>
 
 class ClientNetworking::Impl
 {
@@ -12,6 +13,10 @@ private:
 
     int serverPort;
     std::string serverIP;
+
+    std::thread networkingThread;
+
+    bool acceptedInGame = false;
 public:
 
     ~Impl();
@@ -22,7 +27,11 @@ public:
     void SendToServer(const std::string& message);
     void ReceiveFromServer();
 
+    void SetupNetworkingThread();
+
     std::string GetAddressRepresentation();
+
+    bool HasBeenAcceptedByServer();
 };
 
 ClientNetworking::Impl::~Impl()
@@ -70,6 +79,17 @@ bool ClientNetworking::Impl::SetupServerSocket()
     return true;
 }
 
+void ClientNetworking::Impl::SetupNetworkingThread()
+{
+    std::cout << GetAddressRepresentation() << std::endl;
+    SetupServerSocket();
+    std::cout << "SOCKET SET UP" << std::endl;
+    this->networkingThread = std::thread(&ClientNetworking::Impl::ReceiveFromServer, this);
+    std::cout << "THREAD SET UP" << std::endl;
+    
+    SendToServer("459 CONN");
+}
+
 void ClientNetworking::Impl::SendToServer(const std::string &message)
 {
     // std::cout << "Sending " << message << " to server" << std::endl;
@@ -91,6 +111,12 @@ void ClientNetworking::Impl::ReceiveFromServer()
         {
             buffer[bytesReceived] = '\0'; // Null-terminate the received message
             std::cout << "Received from server: " << buffer << std::endl;
+
+            std::string msg(buffer);
+            if(!acceptedInGame && msg.substr(0,3) == "159")
+            {
+                acceptedInGame = true;
+            }
         }
         else
         {
@@ -102,6 +128,11 @@ void ClientNetworking::Impl::ReceiveFromServer()
 std::string ClientNetworking::Impl::GetAddressRepresentation()
 {
     return serverIP + ":" + std::to_string(serverPort);
+}
+
+bool ClientNetworking::Impl::HasBeenAcceptedByServer()
+{
+    return acceptedInGame;
 }
 
 ClientNetworking::ClientNetworking() : pimpl(new Impl())
@@ -141,4 +172,14 @@ void ClientNetworking::ReceiveFromServer()
 std::string ClientNetworking::GetAddressRepresentation()
 {
     return pimpl->GetAddressRepresentation();
+}
+
+void ClientNetworking::SetupNetworkingThread()
+{
+    pimpl->SetupNetworkingThread();
+}
+
+bool ClientNetworking::HasBeenAcceptedByServer()
+{
+    return pimpl->HasBeenAcceptedByServer();
 }

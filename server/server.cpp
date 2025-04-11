@@ -1,4 +1,5 @@
 #include "networking.h"
+#include "gameinstance.h"
 #include <thread>
 #include <mutex>
 
@@ -28,29 +29,42 @@ void parse_args(int argc, char const* argv[], int& maxPlayers, int& tickRate)
     // TODO - error checking for TickRate
 }
 
+static GameInstance gameInstance;
+
 int main(int argc, char const *argv[])
 {
     int maxPlayers = 1;
-    int tickRate = 2;
-    parse_args(argc, argv, maxPlayers, tickRate);
+    int ticksPerSecond = 60;
+    parse_args(argc, argv, maxPlayers, ticksPerSecond);
     // std::signal(SIGINT, handleInterrupt); //FIXME - interrupt doesn't seem to stop any recvfrom... maybe works after threading implemented...
+    
     Networking networking = Networking();
     networking.InitializeWinSock();
     networking.CreateServerSocket(100);
+
+    gameInstance = GameInstance(maxPlayers);
 
     networking.SetUpClientListening();
 
     std::cout << "[SERVER] Started." << std::endl;
 
     bool isRunning = true;
+
+    double tickRateDiv = 1000 / ticksPerSecond;
+    std::chrono::microseconds tickRate = std::chrono::microseconds((int)tickRateDiv);
+
     while (isRunning && interrupt)
     {
         // networking.ListenForClients();
         // TODO - delay for simulation rate?
+        std::this_thread::sleep_for(tickRate);
+        std::cout << "updaing..." << std::endl;
+
+        gameInstance.UpdateSimulation();
         networking.SendGameStateToAllPlayers();
     }
 
-    networking.JoinAllThreads();
+    networking.ShutdownServer();
 
     return EXIT_SUCCESS;
 }

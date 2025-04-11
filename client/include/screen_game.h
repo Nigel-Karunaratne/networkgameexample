@@ -2,17 +2,13 @@
 
 #include "screen.h"
 
-// Wait for user input
-class TitleScreen : public Screen
+class GameScreen : public Screen
 {
 private:
-    char ipTextBox[16] = {0};
-    char portTextBox[6] = {0};
-    bool startNetworking = false;
     ClientNetworking& networkingRef;
 public:
-    TitleScreen(ClientNetworking& networkingRef);
-    ~TitleScreen();
+    GameScreen(ClientNetworking& networkingRef);
+    ~GameScreen();
 
     Screen* Update(ClientState& stateRef) override;
     void Draw(RenderTexture2D& renderTexture, const Vector2& mousePos) override;

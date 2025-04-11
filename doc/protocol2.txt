@@ -1,0 +1,12 @@
+connecting:
+
+CLIENT          SERVER
+459 CONN
+        ->>
+                try to add client.
+                if success:
+                    159 {serialized info for client's player}
+        <<-
+                else:
+                    29 NO
+        <<-

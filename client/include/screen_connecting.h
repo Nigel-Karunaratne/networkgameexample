@@ -1,19 +1,18 @@
 #pragma once
 
-#include "clientstate.h"
-#include "clientnetworking.h"
-#include "raylib.h"
+#include "screen.h"
 
 // Wait for user input
-class ConnectingScreen
+class ConnectingScreen : public Screen
 {
 private:
     ClientNetworking& networkingRef;
+    float delayTimer;
 public:
     ConnectingScreen(ClientNetworking& networkingRef);
     ~ConnectingScreen();
 
-    void Update(ClientState& stateRef);
-    void Draw(RenderTexture2D& renderTexture);
+    Screen* Update(ClientState& stateRef) override;
+    void Draw(RenderTexture2D& renderTexture, const Vector2& mousePos) override;
 };
 
