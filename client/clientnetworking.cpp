@@ -3,6 +3,9 @@
 
 #include <iostream>
 #include <thread>
+#include <atomic>
+
+#include "protocol.h"
 
 class ClientNetworking::Impl
 {
@@ -16,7 +19,9 @@ private:
 
     std::thread networkingThread;
 
-    bool acceptedInGame = false;
+    int acceptedInGameStatus = 0;
+
+    std::atomic<bool> threadRunning;
 public:
 
     ~Impl();
@@ -27,11 +32,12 @@ public:
     void SendToServer(const std::string& message);
     void ReceiveFromServer();
 
-    void SetupNetworkingThread();
+    bool SetupNetworkingThread();
+    void ShutdownNetworkngThread();
 
     std::string GetAddressRepresentation();
 
-    bool HasBeenAcceptedByServer();
+    int GetConnectionRequestStatus();
 };
 
 ClientNetworking::Impl::~Impl()
@@ -67,6 +73,10 @@ bool ClientNetworking::Impl::SetupServerSocket()
         return false;
     }
 
+    // WINDOWS-SPECIFIC
+    u_long mode = 1;
+    ioctlsocket(clientSocket, FIONBIO, &mode);
+
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(serverPort);
     serverAddr.sin_addr.s_addr = inet_addr(serverIP.c_str());
@@ -79,15 +89,29 @@ bool ClientNetworking::Impl::SetupServerSocket()
     return true;
 }
 
-void ClientNetworking::Impl::SetupNetworkingThread()
+bool ClientNetworking::Impl::SetupNetworkingThread()
 {
     std::cout << GetAddressRepresentation() << std::endl;
-    SetupServerSocket();
+    bool result = SetupServerSocket();
+    if(!result)
+        return false;
+    
     std::cout << "SOCKET SET UP" << std::endl;
+    
+    threadRunning = true;
     this->networkingThread = std::thread(&ClientNetworking::Impl::ReceiveFromServer, this);
     std::cout << "THREAD SET UP" << std::endl;
     
-    SendToServer("459 CONN");
+    SendToServer(protocol::CLIENT_CONNECT_REQUEST);
+
+    return true;
+}
+
+void ClientNetworking::Impl::ShutdownNetworkngThread()
+{
+    threadRunning = false;
+    if(networkingThread.joinable())
+        this->networkingThread.detach();
 }
 
 void ClientNetworking::Impl::SendToServer(const std::string &message)
@@ -104,18 +128,27 @@ void ClientNetworking::Impl::ReceiveFromServer()
     sockaddr_in fromAddr;
     int fromAddrLen = sizeof(fromAddr);
     
-    while(true)
+    while(threadRunning)
     {
+        // FOR UNIX, int bytesReceived = recvfrom(clientSocket, buffer, sizeof(buffer), MSG_DONTWAIT, (sockaddr*)&fromAddr, &fromAddrLen);
         int bytesReceived = recvfrom(clientSocket, buffer, sizeof(buffer), 0, (sockaddr*)&fromAddr, &fromAddrLen);
         if (bytesReceived > 0)
         {
-            buffer[bytesReceived] = '\0'; // Null-terminate the received message
+            buffer[bytesReceived] = '\0'; //null-terminate the received message
             std::cout << "Received from server: " << buffer << std::endl;
 
             std::string msg(buffer);
-            if(!acceptedInGame && msg.substr(0,3) == "159")
+            if(acceptedInGameStatus == 0)
             {
-                acceptedInGame = true;
+                if (msg.substr(0,3) == "159")
+                {
+                    acceptedInGameStatus = 1;
+                }
+                else if (msg.substr(0,3) == "000")
+                {
+                    std::cout << "rejected" << std::endl;
+                    acceptedInGameStatus = -1;
+                }
             }
         }
         else
@@ -123,6 +156,7 @@ void ClientNetworking::Impl::ReceiveFromServer()
             // std::cout << "GOT NOTHING?" << std::endl;
         }
     }
+    std::cout << "DONE!!!!!!!!!!!!!!!!!!!!" << std::endl;
 }
 
 std::string ClientNetworking::Impl::GetAddressRepresentation()
@@ -130,9 +164,9 @@ std::string ClientNetworking::Impl::GetAddressRepresentation()
     return serverIP + ":" + std::to_string(serverPort);
 }
 
-bool ClientNetworking::Impl::HasBeenAcceptedByServer()
+int ClientNetworking::Impl::GetConnectionRequestStatus()
 {
-    return acceptedInGame;
+    return acceptedInGameStatus;
 }
 
 ClientNetworking::ClientNetworking() : pimpl(new Impl())
@@ -174,12 +208,18 @@ std::string ClientNetworking::GetAddressRepresentation()
     return pimpl->GetAddressRepresentation();
 }
 
-void ClientNetworking::SetupNetworkingThread()
+bool ClientNetworking::SetupNetworkingThread()
 {
-    pimpl->SetupNetworkingThread();
+    return pimpl->SetupNetworkingThread();
 }
 
-bool ClientNetworking::HasBeenAcceptedByServer()
+void ClientNetworking::ShutdownNetworkngThread()
 {
-    return pimpl->HasBeenAcceptedByServer();
+    std::cout << "    SHUTTING DOWN THREAD..."<<std::endl;
+    pimpl->ShutdownNetworkngThread();
+}
+
+int ClientNetworking::GetConnectionRequestStatus()
+{
+    return pimpl->GetConnectionRequestStatus();
 }

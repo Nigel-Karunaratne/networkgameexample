@@ -8,6 +8,10 @@ class ConnectingScreen : public Screen
 private:
     ClientNetworking& networkingRef;
     float delayTimer;
+
+    int acceptedByServerStatus;
+    bool successfullySetupNetworking;
+    bool returnToTitle;
 public:
     ConnectingScreen(ClientNetworking& networkingRef);
     ~ConnectingScreen();

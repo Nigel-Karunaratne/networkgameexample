@@ -38,7 +38,7 @@ int main(int argc, char const *argv[])
     parse_args(argc, argv, maxPlayers, ticksPerSecond);
     // std::signal(SIGINT, handleInterrupt); //FIXME - interrupt doesn't seem to stop any recvfrom... maybe works after threading implemented...
     
-    Networking networking = Networking();
+    Networking networking = Networking(maxPlayers);
     networking.InitializeWinSock();
     networking.CreateServerSocket(100);
 

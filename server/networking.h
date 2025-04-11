@@ -1,5 +1,7 @@
 #pragma once
 
+#include "protocol.h"
+
 #include <winsock2.h>
 #include <iostream>
 #include <unordered_map>
@@ -27,11 +29,13 @@ private:
     std::vector<std::thread> allThreads;
     std::mutex clientThreadMutex;
 
+    int maxClients;
+
     void CreateNewPlayer(std::string key, Client newClient);
     void HandleClient_Thread(SOCKET serverSocket, Client client);
     void ListenForClients_Thread();
 public:
-    Networking() {};
+    Networking(int maxClients) : maxClients(maxClients) {};
     ~Networking() { closesocket(serverSocket); WSACleanup(); };
 
     bool InitializeWinSock();
@@ -99,8 +103,16 @@ inline void Networking::ListenForClients_Thread()
             std::string key = inet_ntoa(clientAddr.sin_addr) + std::to_string(ntohs(clientAddr.sin_port));
             if (clientMap.find(key) == clientMap.end())
             {
-                CreateNewPlayer(key, (Client){clientAddr});
-                sendto(serverSocket, "159 ACK", strlen("159 ACK"), 0, (sockaddr*)&clientAddr, clientAddrLen);
+                if(clientMap.size() >= maxClients)
+                {
+                    // reject
+                    sendto(serverSocket, protocol::SERVER_CONNECT_REJECT, protocol::SERVER_CONNECT_REJECT_LEN, 0, (sockaddr*)&clientAddr, clientAddrLen);
+                }
+                else //accept
+                {
+                    CreateNewPlayer(key, (Client){clientAddr});
+                    sendto(serverSocket, protocol::SERVER_CONNECT_ACCEPT, protocol::SERVER_CONNECT_ACCEPT_LEN, 0, (sockaddr*)&clientAddr, clientAddrLen);
+                }
             }
             else
             {
