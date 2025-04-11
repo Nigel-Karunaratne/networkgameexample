@@ -45,7 +45,7 @@ bool GUI::TextButton(Rectangle bounds, const char *textToShow, Vector2 mousePos,
     if(CheckCollisionPointRec(mousePos, bounds))
     {
         DrawText(textToShow, bounds.x + (bounds.width / 2) - (textSize.x / 2), bounds.y + (bounds.height / 2) - (textSize.y / 2), 32, BLACK);
-        if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) return true;
+        if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) return true;
     }
     else
     {
