@@ -1,2 +1,5 @@
-client.exe: client.cpp clientnetworking.cpp screen_title.cpp screen_connecting.cpp gui.cpp
-	g++ client.cpp clientnetworking.cpp screen_title.cpp screen_connecting.cpp gui.cpp -o client -I include/ -I ../shared/include/ -L lib/ -lraylib -lgdi32 -lwinmm -lws2_32
+SOURCES := $(wildcard src/*.cpp)
+HEADERS := $(wildcard include/*.h)
+
+client.exe: $(SOURCES) $(HEADERS)
+	g++ $(SOURCES) -o client -I include/ -I ../shared/include/ -L lib/ -lraylib -lgdi32 -lwinmm -lws2_32
