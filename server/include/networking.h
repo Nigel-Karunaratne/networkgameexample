@@ -2,6 +2,8 @@
 
 #include "protocol.h"
 
+#include "gameinstance.h"
+
 #include <winsock2.h>
 #include <iostream>
 #include <unordered_map>
@@ -10,9 +12,14 @@
 #include <mutex>
 #include <vector>
 
+#include <functional> //reference_wrapper
+
+#include "packing.h"
+
 struct Client
 {
     sockaddr_in address;
+    int playerRefNumber;
 
     std::string getKey() { return inet_ntoa(this->address.sin_addr) + std::to_string(ntohs(this->address.sin_port)); }
 };
@@ -31,11 +38,13 @@ private:
 
     int maxClients;
 
-    void CreateNewPlayer(std::string key, Client newClient);
+    GameInstance& gameInstanceRef;
+
+    void CreateNewPlayer(std::string key, sockaddr_in clientAddress);
     void HandleClient_Thread(SOCKET serverSocket, Client client);
     void ListenForClients_Thread();
 public:
-    Networking(int maxClients) : maxClients(maxClients) {};
+    Networking(int maxClients, GameInstance& gameInstanceRef) : maxClients(maxClients), gameInstanceRef(gameInstanceRef) {};
     ~Networking() { closesocket(serverSocket); WSACleanup(); };
 
     bool InitializeWinSock();
@@ -110,7 +119,7 @@ inline void Networking::ListenForClients_Thread()
                 }
                 else //accept
                 {
-                    CreateNewPlayer(key, (Client){clientAddr});
+                    CreateNewPlayer(key, clientAddr);
                     sendto(serverSocket, protocol::SERVER_CONNECT_ACCEPT, protocol::SERVER_CONNECT_ACCEPT_LEN, 0, (sockaddr*)&clientAddr, clientAddrLen);
                 }
             }
@@ -130,15 +139,12 @@ inline void Networking::ListenForClients_Thread()
 
 inline void Networking::SendGameStateToAllPlayers()
 {
+    std::vector<char> snapshot = gameInstanceRef.CreateSnapshot();    
     for(auto& clientPair: clientMap)
     {
         Client& c = clientPair.second;
 
-        // TODO - serialize game data
-        const char *buffer = "this is the game state"; // char buffer[10];
-
-        // TODO - send to client
-        sendto(serverSocket, buffer, strlen(buffer), 0, (sockaddr*)&c.address, sizeof(c.address));
+        sendto(serverSocket, snapshot.data(), snapshot.size(), 0, (sockaddr*)&c.address, sizeof(c.address));
     }
 }
 
@@ -161,10 +167,17 @@ inline void Networking::ShutdownServer()
     std::cout << "[SERVER] Shutdown Complete." << std::endl;
 }
 
-inline void Networking::CreateNewPlayer(std::string key, Client newClient)
+inline void Networking::CreateNewPlayer(std::string key, sockaddr_in clientAddress) //TODO - changed from client to sockaddr_in. make sure this works
 {
     std::cout << "NEW CLIENT: " << key << std::endl;
-    clientMap[key] = newClient;
+    
+    int createdPlayerNumber = gameInstanceRef.CreateANewPlayer();
+    Client newClient =
+    {
+        clientAddress,
+        createdPlayerNumber
+    };
+    clientMap.emplace(key,newClient);
     allThreads.push_back(std::thread(&HandleClient_Thread, this, serverSocket, newClient));
 }
 
@@ -175,7 +188,7 @@ inline void Networking::HandleClient_Thread(SOCKET serverSocket, Client client)
 
     
     while(true)
-    {
+    { /*
         // WINDOWS SPECIFIC!!
         // Set up the fd_set for select()
         fd_set readfds;
@@ -214,17 +227,47 @@ inline void Networking::HandleClient_Thread(SOCKET serverSocket, Client client)
                 {
                     std::cout << "Received " << len << " bytes from client: " << inet_ntoa(client.address.sin_addr) << ":" << ntohs(client.address.sin_port) << std::endl;
                     // Process received data here...
+                    std::string data(buffer);
+                    if(len >= 2 && buffer[0] == '8')
+                    {
+                        // TODO - get last byte in string? HTONS?
+                        uint8_t inputMask = static_cast<uint8_t>(buffer[1]);
+                        bool left; bool right; bool jump;
+                        packing::UnpackInputFromByte(inputMask, left, right, jump);
+                        gameInstanceRef.UpdateSpecificPlayerInputs(client.playerRefNumber, left, right, jump);
+                    }
+                    else if (data.substr(0,3) == "444")
+                    {
+                        // TODO - disconnect request handle! MUST SEND SEPARATE ACK
+                        sendto(serverSocket, protocol::SERVER_DISCONNECT_REQUEST_ACK, protocol::SERVER_DISCONNECT_REQUEST_ACK_LEN, 0, (sockaddr*)&client.address, sizeof(client.address));
+                    }
                 }
             }
-        }
+        } */
 
-        // int bytesReceived = recvfrom(serverSocket, buffer, sizeof(buffer), 0, (sockaddr*)&client.address, &addrSize);
-        // if(bytesReceived > 0)
-        // {
-        //     std::lock_guard<std::mutex> lock(clientThreadMutex);
-        //     // TODO -- update a game state here?
-        //     std::cout << "game state updated..." << std::endl;
-        // }
+        int bytesReceived = recvfrom(serverSocket, buffer, sizeof(buffer), 0, (sockaddr*)&client.address, &addrSize);
+        if(bytesReceived > 0)
+        {
+            // std::lock_guard<std::mutex> lock(clientThreadMutex);
+            // // TODO -- update a game state here?
+            // std::cout << "game state updated..." << std::endl;
+            std::cout << "Received " << bytesReceived << " bytes from client: " << inet_ntoa(client.address.sin_addr) << ":" << ntohs(client.address.sin_port) << std::endl;
+            // Process received data here...
+            std::string data(buffer);
+            if(bytesReceived >= 2 && buffer[0] == '8')
+            {
+                // TODO - get last byte in string? HTONS?
+                uint8_t inputMask = static_cast<uint8_t>(buffer[1]);
+                bool left; bool right; bool jump;
+                packing::UnpackInputFromByte(inputMask, left, right, jump);
+                gameInstanceRef.UpdateSpecificPlayerInputs(client.playerRefNumber, left, right, jump);
+            }
+            else if (data.substr(0,3) == "444")
+            {
+                // TODO - disconnect request handle! MUST SEND SEPARATE ACK
+                sendto(serverSocket, protocol::SERVER_DISCONNECT_REQUEST_ACK, protocol::SERVER_DISCONNECT_REQUEST_ACK_LEN, 0, (sockaddr*)&client.address, sizeof(client.address));
+            }
+        }
     }
 
     // out of while, remove this client and thread
@@ -237,6 +280,7 @@ inline void Networking::HandleClient_Thread(SOCKET serverSocket, Client client)
     else
     {
         // TODO - send final "disconnect" message?
+        gameInstanceRef.RemovePlayer(client.playerRefNumber);
         clientMap.erase(key);
     }
 

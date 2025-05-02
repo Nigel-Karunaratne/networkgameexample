@@ -19,7 +19,7 @@ private:
 
     std::thread networkingThread;
 
-    int acceptedInGameStatus = 0;
+    int acceptedInGameStatus = 0; //1 for accepted, -1 for rejected, 0 for unset
 
     std::atomic<bool> threadRunning;
 public:
@@ -34,6 +34,8 @@ public:
 
     bool SetupNetworkingThread();
     void ShutdownNetworkngThread();
+
+    void SendInputToServer(uint8_t input);
 
     std::string GetAddressRepresentation();
 
@@ -112,6 +114,12 @@ void ClientNetworking::Impl::ShutdownNetworkngThread()
     threadRunning = false;
     if(networkingThread.joinable())
         this->networkingThread.detach();
+}
+
+void ClientNetworking::Impl::SendInputToServer(uint8_t input)
+{
+    std::string msg = protocol::CLIENT_INPUT_HEADER + std::to_string(input);
+    sendToServer(msg);
 }
 
 void ClientNetworking::Impl::sendToServer(const std::string &message)
@@ -207,6 +215,11 @@ void ClientNetworking::ShutdownNetworkngThread()
 {
     std::cout << "    SHUTTING DOWN THREAD..."<<std::endl;
     pimpl->ShutdownNetworkngThread();
+}
+
+void ClientNetworking::SendInputToServer(uint8_t input)
+{
+    pimpl->SendInputToServer(input);
 }
 
 int ClientNetworking::GetConnectionRequestStatus()

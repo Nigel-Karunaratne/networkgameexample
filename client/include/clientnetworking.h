@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include "stdint.h"
 
 class ClientNetworking
 {
@@ -17,6 +18,8 @@ public:
 
     bool SetupNetworkingThread();
     void ShutdownNetworkngThread();
+
+    void SendInputToServer(uint8_t input);
 
     std::string GetAddressRepresentation();
 

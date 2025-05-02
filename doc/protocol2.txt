@@ -10,3 +10,21 @@ CLIENT          SERVER
                 else:
                     29 NO
         <<-
+
+
+
+8 (input)
+        ->>
+                thread updates client (no ACK)
+
+444
+        ->>
+                disconnect request
+                server disconnects player
+                        send 201 OK
+        <<-
+
+
+
+200 TIMEOUT
+201 OK (by client req)

@@ -25,24 +25,25 @@ void parse_args(int argc, char const* argv[], int& maxPlayers, int& tickRate)
 
     // check bounds
     if (maxPlayers < 1 || maxPlayers > 8)
-        maxPlayers = 2;
+        maxPlayers = 4;
     // TODO - error checking for TickRate
 }
 
-static GameInstance gameInstance;
+// static GameInstance gameInstance;
 
 int main(int argc, char const *argv[])
 {
-    int maxPlayers = 1;
+    int maxPlayers = 4;
     int ticksPerSecond = 60;
     parse_args(argc, argv, maxPlayers, ticksPerSecond);
     // std::signal(SIGINT, handleInterrupt); //FIXME - interrupt doesn't seem to stop any recvfrom... maybe works after threading implemented...
     
-    Networking networking = Networking(maxPlayers);
+    GameInstance gameInstance = GameInstance(maxPlayers);
+
+    Networking networking = Networking(maxPlayers, gameInstance);
     networking.InitializeWinSock();
     networking.CreateServerSocket(100);
 
-    gameInstance = GameInstance(maxPlayers);
 
     networking.SetUpClientListening();
 
@@ -55,10 +56,8 @@ int main(int argc, char const *argv[])
 
     while (isRunning && interrupt)
     {
-        // networking.ListenForClients();
-        // TODO - delay for simulation rate?
         std::this_thread::sleep_for(tickRate);
-        std::cout << "updaing..." << std::endl;
+        // std::cout << "updaing..." << std::endl;
 
         gameInstance.UpdateSimulation();
         networking.SendGameStateToAllPlayers();

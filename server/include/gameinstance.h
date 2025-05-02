@@ -1,18 +1,14 @@
 #pragma once
 
 #include <vector>
+#include <thread>
+#include <mutex>
 
-struct Player
-{
-    // int number; //NUMBER determines player color as well, on client side
-    int x;
-    int y;
-    int dx;
-    int dy;
+#include "player.h"
+#include "rectangle.h"
+#include "level.h"
 
-    int width = 32;
-    int height = 32;
-};
+#include "winsock2.h"
 
 class GameInstance
 {
@@ -21,13 +17,24 @@ private:
     std::vector<Player> players;
 
     int maxPlayers;
+
+    std::mutex playerVectorMutex;
+
+    std::vector<GameRectangle> platforms = level::levelPlatforms;
+
 public:
     GameInstance() {};
     GameInstance(int maxPlayers);
     ~GameInstance();
 
+    // TODO - CALLED BY A NETWORKING FUNCTION, RETURNS A REF TO THE NEW PLAYER IN THE STRUCT
+    int CreateANewPlayer();
+    void RemovePlayer(int at);
+
     const Player& GetPlayerByNumber(int playerno);
-    void UpdateSpecificPlayer(int playerno, Player newValues);
+    void UpdateSpecificPlayerInputs(int playerno, bool left, bool right, bool jump);
+
+    std::vector<char> CreateSnapshot();
 
     void UpdateSimulation(); // for all players, make them move. Handle any collisions, report any losses
 };
@@ -41,7 +48,20 @@ GameInstance::~GameInstance()
 {
 }
 
-inline const Player& GameInstance::GetPlayerByNumber(int playerno)
+inline int GameInstance::CreateANewPlayer()
+{
+    std::lock_guard<std::mutex> lock(playerVectorMutex);
+    players.push_back((Player){(int)players.size(), 100, 100, 0, 0, 32, 32, false, false, 0}); //TODO - CREATE A NEW PLAYER@@@@@@@@!!!!!!!!
+    return players.size();
+}
+
+inline void GameInstance::RemovePlayer(int at)
+{
+    std::lock_guard<std::mutex> lock(playerVectorMutex);
+    players.erase(players.begin() + at);
+}
+
+inline const Player &GameInstance::GetPlayerByNumber(int playerno)
 {
     // if (playerno < 0 || playerno > players.size())
     //     return;
@@ -49,9 +69,45 @@ inline const Player& GameInstance::GetPlayerByNumber(int playerno)
         return players.at(playerno);
 }
 
-inline void GameInstance::UpdateSpecificPlayer(int playerno, Player newValues)
+inline void GameInstance::UpdateSpecificPlayerInputs(int playerno, bool left, bool right, bool jump)
 {
-    players.at(0) = newValues;
+    std::lock_guard<std::mutex> lock(playerVectorMutex);
+    players.at(playerno).dx = (left ? -5 : 0);
+    players.at(playerno).dx = (right ? 5 : 0);
+    players.at(playerno).jumpRequest = jump;
+}
+
+inline int32_t ToNetInt(int val) {
+    return static_cast<int32_t>(htonl(static_cast<uint32_t>(val)));
+}
+
+inline std::vector<char> GameInstance::CreateSnapshot()
+{
+    std::vector<char> buffer;
+
+    // header
+    buffer.push_back(protocol::SERVER_STATE_HEADER);
+
+    // Player count
+    uint32_t count = static_cast<uint32_t>(players.size());
+    uint32_t netCount = htonl(count);
+    buffer.insert(buffer.end(), reinterpret_cast<char*>(&netCount), reinterpret_cast<char*>(&netCount) + sizeof(uint32_t));
+
+    // add each player, converting each field to network byte order
+    for (const auto& p : players) {
+        PlayerState state {
+            ToNetInt(p.number),
+            ToNetInt(p.x),
+            ToNetInt(p.y),
+            ToNetInt(p.width),
+            ToNetInt(p.height),
+            ToNetInt(p.score)
+        };
+
+        buffer.insert(buffer.end(), reinterpret_cast<char*>(&state), reinterpret_cast<char*>(&state) + sizeof(PlayerState));
+    }
+
+    return buffer;
 }
 
 void moveToZero(int& value, int amount)
@@ -71,7 +127,7 @@ int CheckCollision(const Player& a, const Player& b)
         a.y < b.y + b.height &&
         a.y + a.height > b.y)
     {
-        if (a.y > b.y) return 1;
+        if (a.y < b.y) return 1;
         else return -1;
     }
     return 0;
@@ -81,10 +137,36 @@ inline void GameInstance::UpdateSimulation()
 {
     for(Player& player : players)
     {
+        // horizontal movement
         player.x += player.dx;
         moveToZero(player.x, 2);
+
+        // jump
+        if(player.jumpRequest && player.isOnGround)
+            player.dy -= 20;
+            player.isOnGround = false;
+            player.jumpRequest = false;
+        
+        // gravity
+        if (!player.isOnGround)
+            player.dy += 5;
+
         player.y += player.dy;
         moveToZero(player.y, 2);
+
+        // collision w/ ground/platforms
+        player.isOnGround = false;
+        GameRectangle playerRect = (GameRectangle){player.x, player.y, player.width, player.height};
+        for(const auto& plat : platforms)
+        {
+            if (playerRect.intersects(plat)) {
+                // snap to top of platform
+                player.y = plat.y - player.height;
+                player.dy = 0;
+                player.isOnGround = true;
+                break;
+            }
+        }
     }
 
     for (int i = 0; i < players.size(); i++)
@@ -94,11 +176,13 @@ inline void GameInstance::UpdateSimulation()
             int col = CheckCollision(players.at(i), players.at(j));
             if (col >= 1)
             {
-                // TODO - player 1 has scored!
+                // TODO - player 1 has scored! ADD MUTEX?
+                players.at(i).score++;
             }
             else if (col <= -1)
             {
                 // TODO - player 2 has scored!
+                players.at(j).score++;
             }
         }
     }
